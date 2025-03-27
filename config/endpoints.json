@@ -1,0 +1,5 @@
+{
+  "aws": "s3.amazonaws.com",
+  "azure": "azure.microsoft.com",
+  "gcp": "storage.googleapis.com"
+}
