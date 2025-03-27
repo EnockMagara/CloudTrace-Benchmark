@@ -4,7 +4,8 @@ on:
   push:
     branches:
       - main
-      - setup  # Remove if not needed
+      - setup  
+      - analytics
   pull_request:
     branches:
       - main
