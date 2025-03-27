@@ -8,4 +8,4 @@ def mock_traceroute(monkeypatch):
             {"ttl": 1, "ip": "192.168.1.1", "rtt": 10.0, "status": "success", "attempt": 1, "location": None},
             {"ttl": 2, "ip": "10.0.0.1", "rtt": 20.0, "status": "success", "attempt": 1, "location": None}
         ]
-    monkeypatch.setattr("src.tracer.get_route", mock_get_route)
+    monkeypatch.setattr("tests.test_tracer.get_route", mock_get_route)
