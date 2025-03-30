@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudTrace Benchmark</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">CloudTrace</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/visualize">Results</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h2 class="mb-0">Cloud Provider Network Performance Benchmark</h2>
+                    </div>
+                    <div class="card-body">
+                        <p class="lead">Analyze network latency and routing to major cloud providers</p>
+                        
+                        <form id="benchmark-form">
+                            <div class="mb-3">
+                                <label class="form-label">Select Cloud Providers:</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="aws" id="aws" checked>
+                                    <label class="form-check-label" for="aws">
+                                        Amazon Web Services (AWS)
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="azure" id="azure" checked>
+                                    <label class="form-check-label" for="azure">
+                                        Microsoft Azure
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="gcp" id="gcp" checked>
+                                    <label class="form-check-label" for="gcp">
+                                        Google Cloud Platform (GCP)
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary" id="runButton">
+                                <span class="spinner-border spinner-border-sm d-none" id="spinner" role="status"></span>
+                                Run Benchmark
+                            </button>
+                        </form>
+                        
+                        <div class="alert alert-info mt-4 d-none" id="runningAlert">
+                            <strong>Running benchmark...</strong> This may take a few moments.
+                        </div>
+                        
+                        <div class="alert alert-success mt-4 d-none" id="successAlert">
+                            <strong>Benchmark complete!</strong> <a href="/visualize">View results</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
