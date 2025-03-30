@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudTrace Results</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">CloudTrace</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/visualize">Results</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h2 class="mb-0">Benchmark Results</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <h3>Average Response Time (RTT)</h3>
+                                <div id="rttBarChart" style="height: 400px;"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <h3>Hop Latency Analysis</h3>
+                                <div id="hopLatencyChart" style="height: 500px;"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h3>Success Rate by Provider</h3>
+                            </div>
+                            {% for i in range(endpoints|length) %}
+                            <div class="col-md-4">
+                                <div id="gauge{{ i }}" style="height: 300px;"></div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h3>Detailed Results</h3>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-hover">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Endpoint</th>
+                                                <th>Hop Count</th>
+                                                <th>Avg RTT (ms)</th>
+                                                <th>Min RTT (ms)</th>
+                                                <th>Max RTT (ms)</th>
+                                                <th>Success Rate (%)</th>
+                                                <th>Packet Loss (%)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for endpoint in endpoints %}
+                                            <tr>
+                                                <td>{{ endpoint }}</td>
+                                                <td>{{ results[endpoint].hop_count }}</td>
+                                                <td>{{ "%.2f"|format(results[endpoint].avg_rtt_ms) }}</td>
+                                                <td>{{ "%.2f"|format(results[endpoint].min_rtt_ms) }}</td>
+                                                <td>{{ "%.2f"|format(results[endpoint].max_rtt_ms) }}</td>
+                                                <td>{{ "%.2f"|format(results[endpoint].success_rate) }}%</td>
+                                                <td>{{ "%.2f"|format(results[endpoint].packet_loss) }}%</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Parse chart data from Flask 
+        const rttBar = JSON.parse('{{ charts.rtt_bar | safe }}');
+        const hopLatency = JSON.parse('{{ charts.hop_latency | safe }}');
+        const gauges = [
+            {% for gauge in charts.gauges %}
+            JSON.parse('{{ gauge | safe }}'){% if not loop.last %},{% endif %}
+            {% endfor %}
+        ];
+
+        // Render charts
+        Plotly.newPlot('rttBarChart', rttBar.data, rttBar.layout);
+        Plotly.newPlot('hopLatencyChart', hopLatency.data, hopLatency.layout);
+        
+        // Render gauge charts
+        {% for i in range(endpoints|length) %}
+        Plotly.newPlot('gauge{{ i }}', gauges[{{ i }}].data, gauges[{{ i }}].layout);
+        {% endfor %}
+        
+        // Make charts responsive
+        window.addEventListener('resize', function() {
+            Plotly.relayout('rttBarChart', {
+                'xaxis.automargin': true,
+                'yaxis.automargin': true
+            });
+            Plotly.relayout('hopLatencyChart', {
+                'xaxis.automargin': true,
+                'yaxis.automargin': true
+            });
+            {% for i in range(endpoints|length) %}
+            Plotly.relayout('gauge{{ i }}', {
+                'xaxis.automargin': true,
+                'yaxis.automargin': true
+            });
+            {% endfor %}
+        });
+    </script>
+</body>
+</html>
