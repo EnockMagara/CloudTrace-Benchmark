@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import pandas as pd
 from pathlib import Path
 import json
@@ -8,12 +9,14 @@ import os
 
 from src.benchmark import run_benchmark
 from src.endpoints import get_endpoints
+from src.constants import PROVIDERS
 
 app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    providers = {k: v for k, v in PROVIDERS.items()}
+    return render_template('index.html', providers=providers)
 
 @app.route('/benchmark', methods=['POST'])
 def run_benchmark_endpoint():
@@ -28,20 +31,28 @@ def run_benchmark_endpoint():
     result_path.parent.mkdir(exist_ok=True)
     
     with open(result_path, 'w') as f:
-        json_results = {k: {kk: vv for kk, vv in v.items() if kk != 'hops'} for k, v in results.items()}
-        hops_data = {k: v['hops'] for k, v in results.items()}
+        # Create a version of results suitable for JSON serialization
+        json_results = {}
+        for k, v in results.items():
+            json_results[k] = {kk: vv for kk, vv in v.items() if kk != 'hops'}
+            # Extract key hop data with geo info for visualization
+            hops = []
+            for hop in v['hops']:
+                hop_data = {
+                    'ttl': hop.get('ttl'),
+                    'ip': hop.get('ip'),
+                    'rtt': hop.get('rtt'),
+                    'status': hop.get('status')
+                }
+                # Add geo data if available
+                if 'geo' in hop:
+                    hop_data['geo'] = hop['geo']
+                    if 'lat' in hop and 'lon' in hop:
+                        hop_data['lat'] = hop['lat']
+                        hop_data['lon'] = hop['lon']
+                hops.append(hop_data)
+            json_results[k]['hops'] = hops
         
-        # Store processed hop data for visualization
-        hop_viz_data = {}
-        for endpoint, hops in hops_data.items():
-            valid_hops = [h for h in hops if h["status"] == "success"]
-            hop_viz_data[endpoint] = {
-                'ttls': [h["ttl"] for h in valid_hops],
-                'rtts': [h["rtt"] for h in valid_hops],
-                'ips': [h["ip"] for h in valid_hops]
-            }
-        
-        json_results['hop_data'] = hop_viz_data
         json.dump(json_results, f)
     
     return jsonify(results)
@@ -66,32 +77,59 @@ def visualize():
     with open(result_path, 'r') as f:
         results = json.load(f)
     
-    # Create RTT bar chart
-    endpoints = [k for k in results.keys() if k != 'hop_data']
+    # Create bar chart comparing avg RTT
+    endpoints = list(results.keys())
+    provider_names = [PROVIDERS.get(endpoint.split('.')[0], endpoint) for endpoint in endpoints]
     avg_rtts = [results[e]["avg_rtt_ms"] for e in endpoints]
     
     rtt_bar = go.Figure(data=[
-        go.Bar(x=endpoints, y=avg_rtts, marker_color='skyblue')
+        go.Bar(x=provider_names, y=avg_rtts, marker_color='skyblue', 
+               text=[f"{rtt:.1f} ms" for rtt in avg_rtts],
+               textposition='auto')
     ])
     rtt_bar.update_layout(
-        title="Average RTT by Cloud Provider",
-        xaxis_title="Endpoint",
+        title="Average Response Time by Cloud Provider",
+        xaxis_title="Cloud Provider",
         yaxis_title="Average RTT (ms)",
         template="plotly_white"
     )
     
     # Create hop latency line chart
-    hop_data = results['hop_data']
-    
     hop_latency = go.Figure()
-    for endpoint, data in hop_data.items():
-        hop_latency.add_trace(go.Scatter(
-            x=data['ttls'],
-            y=data['rtts'],
-            mode='lines+markers',
-            name=endpoint,
-            hovertext=[f"IP: {ip}<br>RTT: {rtt:.2f} ms" for ip, rtt in zip(data['ips'], data['rtts'])]
-        ))
+    
+    for endpoint in endpoints:
+        provider = endpoint.split('.')[0]
+        display_name = PROVIDERS.get(provider, provider)
+        
+        # Extract valid hops with RTT values
+        valid_hops = [h for h in results[endpoint]["hops"] if h.get("status") == "success" and h.get("rtt") is not None]
+        
+        if valid_hops:
+            ttls = [h["ttl"] for h in valid_hops]
+            rtts = [h["rtt"] for h in valid_hops]
+            
+            # Create hover text with geo info when available
+            hover_texts = []
+            for hop in valid_hops:
+                text = f"TTL: {hop['ttl']}<br>IP: {hop['ip']}<br>RTT: {hop['rtt']:.2f} ms"
+                if 'geo' in hop:
+                    geo = hop['geo']
+                    if 'city' in geo and 'country' in geo:
+                        text += f"<br>Location: {geo.get('city')}, {geo.get('country')}"
+                    elif 'country' in geo:
+                        text += f"<br>Country: {geo.get('country')}"
+                    if 'org' in geo:
+                        text += f"<br>Organization: {geo.get('org')}"
+                hover_texts.append(text)
+            
+            hop_latency.add_trace(go.Scatter(
+                x=ttls, 
+                y=rtts,
+                mode='lines+markers',
+                name=display_name,
+                hovertext=hover_texts,
+                hoverinfo='text'
+            ))
     
     hop_latency.update_layout(
         title="RTT per Hop by Cloud Provider",
@@ -101,16 +139,125 @@ def visualize():
         legend_title="Cloud Provider"
     )
     
-    # Create success rate gauge
-    success_rates = [results[e]["success_rate"] for e in endpoints]
+    # Create world map with route visualization
+    # First, create a dataframe with all the hop points
+    map_data = []
     
+    for endpoint in endpoints:
+        provider = endpoint.split('.')[0]
+        display_name = PROVIDERS.get(provider, provider)
+        
+        # Extract valid hops with geo data
+        geo_hops = [h for h in results[endpoint]["hops"] 
+                   if h.get("status") == "success" and "lat" in h and "lon" in h]
+        
+        for hop in geo_hops:
+            hop_data = {
+                'provider': display_name,
+                'endpoint': endpoint,
+                'ttl': hop['ttl'],
+                'lat': hop['lat'],
+                'lon': hop['lon'],
+                'rtt': hop.get('rtt', 0),
+            }
+            
+            # Add location information if available
+            if 'geo' in hop:
+                geo = hop['geo']
+                location_parts = []
+                
+                if 'city' in geo and geo['city']:
+                    location_parts.append(geo['city'])
+                if 'region' in geo and geo['region']:
+                    location_parts.append(geo['region'])
+                if 'country' in geo and geo['country']:
+                    location_parts.append(geo['country'])
+                
+                hop_data['location'] = ', '.join(location_parts) if location_parts else 'Unknown'
+                hop_data['org'] = geo.get('org', 'Unknown')
+            else:
+                hop_data['location'] = 'Unknown'
+                hop_data['org'] = 'Unknown'
+            
+            map_data.append(hop_data)
+    
+    if map_data:
+        df = pd.DataFrame(map_data)
+        
+        # Create the map
+        geo_map = px.scatter_geo(
+            df,
+            lat='lat',
+            lon='lon',
+            color='provider',
+            hover_name='location',
+            hover_data={
+                'provider': True,
+                'ttl': True,
+                'rtt': ':.2f',
+                'org': True,
+                'lat': False,
+                'lon': False,
+                'endpoint': False
+            },
+            size='rtt',
+            size_max=15,
+            projection='natural earth',
+            title='Network Path Visualization'
+        )
+        
+        # Add lines connecting hops for each provider
+        for endpoint in endpoints:
+            provider = endpoint.split('.')[0]
+            display_name = PROVIDERS.get(provider, provider)
+            
+            # Filter for this provider's hops with geo data
+            provider_hops = [h for h in results[endpoint]["hops"] 
+                            if h.get("status") == "success" and "lat" in h and "lon" in h]
+            
+            if len(provider_hops) >= 2:
+                # Sort by TTL
+                provider_hops.sort(key=lambda x: x['ttl'])
+                
+                # Extract coordinates
+                lats = [h['lat'] for h in provider_hops]
+                lons = [h['lon'] for h in provider_hops]
+                
+                # Add the line trace
+                geo_map.add_trace(
+                    go.Scattergeo(
+                        lat=lats,
+                        lon=lons,
+                        mode='lines',
+                        line=dict(width=2, color=px.colors.qualitative.Plotly[endpoints.index(endpoint) % len(px.colors.qualitative.Plotly)]),
+                        name=f"{display_name} Path"
+                    )
+                )
+        
+        geo_map.update_layout(
+            height=600,
+            margin=dict(l=0, r=0, t=40, b=0),
+            legend_title_text='Cloud Provider'
+        )
+    else:
+        # Create empty map if no geo data
+        geo_map = go.Figure(go.Scattergeo())
+        geo_map.update_layout(
+            title="No geolocation data available",
+            height=600
+        )
+    
+    # Create success rate gauges
     gauges = []
     for i, endpoint in enumerate(endpoints):
+        provider = endpoint.split('.')[0]
+        display_name = PROVIDERS.get(provider, provider)
+        
         gauges.append(
             go.Figure(go.Indicator(
                 mode="gauge+number",
                 value=results[endpoint]["success_rate"],
-                title={"text": f"{endpoint} Success Rate"},
+                title={"text": f"{display_name} Success Rate"},
                 gauge={
                     'axis': {'range': [0, 100]},
                     'bar': {'color': "darkblue"},
@@ -128,13 +275,18 @@ def visualize():
     charts = {
         'rtt_bar': rtt_bar.to_json(),
         'hop_latency': hop_latency.to_json(),
+        'geo_map': geo_map.to_json(),
         'gauges': [gauge.to_json() for gauge in gauges]
     }
+    
+    # Create a mapping of endpoints to provider display names
+    provider_display = {endpoint: PROVIDERS.get(endpoint.split('.')[0], endpoint) for endpoint in endpoints}
     
     return render_template('visualize.html', 
                           charts=charts, 
                           results=results,
-                          endpoints=endpoints)
+                          endpoints=endpoints,
+                          provider_display=provider_display)
 
 if __name__ == '__main__':
     app.run(debug=True)

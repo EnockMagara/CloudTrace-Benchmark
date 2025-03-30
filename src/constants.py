@@ -5,8 +5,13 @@ TRIES = 2
 
 PROVIDERS = {
     "aws": "Amazon Web Services",
-    "azure": "Microsoft Azure",
-    "gcp": "Google Cloud Platform"
+    "azure": "Microsoft Azure", 
+    "gcp": "Google Cloud Platform",
+    "ibm": "IBM Cloud",
+    "oracle": "Oracle Cloud",
+    "alibaba": "Alibaba Cloud",
+    "digitalocean": "DigitalOcean",
+    "linode": "Linode (Akamai)"
 }
 
 OUTPUT_FORMATS = ["csv", "json"]
@@ -23,3 +28,8 @@ RESULTS_SCHEMA = {
     "packet_loss": "REAL",
     "timestamp": "TEXT DEFAULT CURRENT_TIMESTAMP"
 }
+
+# IP Geolocation API settings
+IPINFO_API_URL = "https://ipinfo.io/{}/json"
+# Free tier API key limit
+DEFAULT_IPINFO_TOKEN = None

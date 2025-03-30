@@ -1,5 +1,10 @@
 {
   "aws": "s3.amazonaws.com",
   "azure": "azure.microsoft.com",
-  "gcp": "storage.googleapis.com"
+  "gcp": "storage.googleapis.com",
+  "ibm": "cloud.ibm.com",
+  "oracle": "cloud.oracle.com", 
+  "alibaba": "alibabacloud.com",
+  "digitalocean": "digitalocean.com",
+  "linode": "linode.com"
 }
