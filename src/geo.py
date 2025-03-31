@@ -55,6 +55,7 @@ class GeoLocator:
                 "country": "Local",
                 "loc": "0,0",  # Default location for private IPs
                 "org": "Private Network",
+                "asn": "0",
                 "private": True
             }
             self.ip_cache[ip_address] = result
@@ -68,6 +69,7 @@ class GeoLocator:
         
         # Make the API request
         try:
+            # Include ASN information in the request
             url = IPINFO_API_URL.format(ip_address)
             params = {}
             if self.token:
@@ -78,6 +80,17 @@ class GeoLocator:
             
             if response.status_code == 200:
                 result = response.json()
+                
+                # Parse ASN from the org field if it exists and doesn't have ASN field
+                if 'org' in result and 'asn' not in result:
+                    org_parts = result['org'].split()
+                    if org_parts and org_parts[0].startswith('AS'):
+                        try:
+                            asn = org_parts[0][2:]  # Remove 'AS' prefix
+                            result['asn'] = asn
+                        except:
+                            pass
+                
                 self.ip_cache[ip_address] = result
                 self._save_cache()
                 return result
