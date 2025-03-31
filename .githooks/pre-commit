@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# CloudTrace pre-commit hook
+# Checks code quality before allowing commits
+
+# Exit on error
+set -e
+
+echo "Running pre-commit checks..."
+
+# Check if we're in the git repo
+if [ ! -d .git ]; then
+    echo "Error: Not in a git repository"
+    exit 1
+fi
+
+# Get the Python files that are staged for commit
+STAGED_PY_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep "\.py$" || echo "")
+
+if [ -z "$STAGED_PY_FILES" ]; then
+    echo "No Python files to check"
+    exit 0
+fi
+
+# Check if virtual environment exists
+if [ ! -d "venv" ]; then
+    echo "Virtual environment not found. Please run setup.sh first."
+    exit 1
+fi
+
+# Activate virtual environment
+source venv/bin/activate
+
+# Install pre-commit tools if needed
+pip list | grep flake8 >/dev/null || pip install flake8
+pip list | grep black >/dev/null || pip install black
+
+# Run flake8 on staged Python files
+echo "Running flake8..."
+echo "$STAGED_PY_FILES" | xargs flake8 --max-line-length=100
+
+# Run Black on staged Python files
+echo "Running Black formatter..."
+echo "$STAGED_PY_FILES" | xargs black --check --line-length=100
+
+# If we get here, all checks passed
+echo "All pre-commit checks passed!"
+
+# Deactivate virtual environment
+deactivate
+
+exit 0 

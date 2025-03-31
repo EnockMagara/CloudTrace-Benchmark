@@ -1,0 +1,20 @@
+[Unit]
+Description=CloudTrace - Cloud Provider Benchmark Tool
+After=network.target
+
+[Service]
+User=deploy
+WorkingDirectory=/home/deploy/cloudtrace
+ExecStart=/home/deploy/cloudtrace/venv/bin/python /home/deploy/cloudtrace/app.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/cloudtrace/stdout.log
+StandardError=append:/var/log/cloudtrace/stderr.log
+Environment=PATH=/home/deploy/cloudtrace/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Grant capability to bind to raw sockets for traceroute without root
+CapabilityBoundingSet=CAP_NET_RAW
+AmbientCapabilities=CAP_NET_RAW
+
+[Install]
+WantedBy=multi-user.target 

@@ -3,12 +3,10 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - main
-      - setup  
       - analytics
   pull_request:
     branches:
-      - main
+      - analytics
 
 jobs:
   test:
@@ -69,3 +67,55 @@ jobs:
         with:
           name: cloudtrace-package
           path: dist/
+          
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: cloudtrace-package
+          path: dist/
+          
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+            
+      - name: Add host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.DROPLET_IP }} >> ~/.ssh/known_hosts
+          
+      - name: Deploy to DigitalOcean
+        env:
+          DROPLET_IP: ${{ secrets.DROPLET_IP }}
+          DROPLET_USER: ${{ secrets.DROPLET_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          # Create deploy directory structure
+          ssh $DROPLET_USER@$DROPLET_IP "mkdir -p $DEPLOY_PATH/dist"
+          
+          # Copy application files
+          scp -r app.py src/ templates/ static/ requirements.txt config/ $DROPLET_USER@$DROPLET_IP:$DEPLOY_PATH/
+          
+          # Copy the package if needed
+          scp -r dist/* $DROPLET_USER@$DROPLET_IP:$DEPLOY_PATH/dist/
+          
+          # Run deployment script on server
+          ssh $DROPLET_USER@$DROPLET_IP "cd $DEPLOY_PATH && bash deploy.sh"
+          
+      - name: Verify deployment
+        env:
+          DROPLET_IP: ${{ secrets.DROPLET_IP }}
+          DROPLET_USER: ${{ secrets.DROPLET_USER }}
+        run: |
+          # Wait for service to start
+          sleep 10
+          # Check if service is running
+          ssh $DROPLET_USER@$DROPLET_IP "systemctl is-active cloudtrace.service || echo 'Service not running'"
