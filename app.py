@@ -37,6 +37,7 @@ def run_benchmark_endpoint():
             json_results[k] = {kk: vv for kk, vv in v.items() if kk != 'hops'}
             # Extract key hop data with geo info for visualization
             hops = []
+            countries_traversed = set()
             for hop in v['hops']:
                 hop_data = {
                     'ttl': hop.get('ttl'),
@@ -47,11 +48,15 @@ def run_benchmark_endpoint():
                 # Add geo data if available
                 if 'geo' in hop:
                     hop_data['geo'] = hop['geo']
+                    if 'country' in hop['geo']:
+                        countries_traversed.add(hop['geo']['country'])
                     if 'lat' in hop and 'lon' in hop:
                         hop_data['lat'] = hop['lat']
                         hop_data['lon'] = hop['lon']
                 hops.append(hop_data)
             json_results[k]['hops'] = hops
+            json_results[k]['countries_traversed'] = len(countries_traversed)
+            json_results[k]['countries_list'] = list(countries_traversed)
         
         json.dump(json_results, f)
     
@@ -101,8 +106,9 @@ def visualize():
         provider = endpoint.split('.')[0]
         display_name = PROVIDERS.get(provider, provider)
         
-        # Extract valid hops with RTT values
+        # Extract valid hops with RTT values and sort by TTL
         valid_hops = [h for h in results[endpoint]["hops"] if h.get("status") == "success" and h.get("rtt") is not None]
+        valid_hops.sort(key=lambda x: x.get("ttl", 0))
         
         if valid_hops:
             ttls = [h["ttl"] for h in valid_hops]
@@ -139,6 +145,55 @@ def visualize():
         legend_title="Cloud Provider"
     )
     
+    # Create hop latency differential chart to show latency added by each hop
+    hop_differential = go.Figure()
+    
+    for endpoint in endpoints:
+        provider = endpoint.split('.')[0]
+        display_name = PROVIDERS.get(provider, provider)
+        
+        # Extract valid hops with hop_latency values
+        latency_hops = [h for h in results[endpoint]["hops"] 
+                        if h.get("status") == "success" and "hop_latency" in h]
+        
+        if latency_hops:
+            # Sort by TTL to ensure correct order
+            latency_hops.sort(key=lambda x: x.get("ttl", 0))
+            
+            ttls = [h["ttl"] for h in latency_hops]
+            latencies = [h["hop_latency"] for h in latency_hops]
+            
+            # Create hover text with geo info when available
+            hover_texts = []
+            for hop in latency_hops:
+                text = f"TTL: {hop['ttl']}<br>IP: {hop['ip']}<br>Added Latency: {hop['hop_latency']:.2f} ms"
+                if 'geo' in hop:
+                    geo = hop['geo']
+                    if 'city' in geo and 'country' in geo:
+                        text += f"<br>Location: {geo.get('city')}, {geo.get('country')}"
+                    elif 'country' in geo:
+                        text += f"<br>Country: {geo.get('country')}"
+                    if 'org' in geo:
+                        text += f"<br>Organization: {geo.get('org')}"
+                hover_texts.append(text)
+            
+            hop_differential.add_trace(go.Bar(
+                x=ttls,
+                y=latencies,
+                name=display_name,
+                hovertext=hover_texts,
+                hoverinfo='text'
+            ))
+    
+    hop_differential.update_layout(
+        title="Latency Added by Each Hop",
+        xaxis_title="Hop Number (TTL)",
+        yaxis_title="Latency Added (ms)",
+        template="plotly_white",
+        legend_title="Cloud Provider",
+        barmode='group'
+    )
+    
     # Create world map with route visualization
     # First, create a dataframe with all the hop points
     map_data = []
@@ -150,6 +205,9 @@ def visualize():
         # Extract valid hops with geo data
         geo_hops = [h for h in results[endpoint]["hops"] 
                    if h.get("status") == "success" and "lat" in h and "lon" in h]
+        
+        # Sort by TTL to ensure correct path order
+        geo_hops.sort(key=lambda x: x.get("ttl", 0))
         
         for hop in geo_hops:
             hop_data = {
@@ -211,13 +269,13 @@ def visualize():
             provider = endpoint.split('.')[0]
             display_name = PROVIDERS.get(provider, provider)
             
-            # Filter for this provider's hops with geo data
+            # Filter for this provider's hops with geo data and sort by TTL
             provider_hops = [h for h in results[endpoint]["hops"] 
                             if h.get("status") == "success" and "lat" in h and "lon" in h]
             
             if len(provider_hops) >= 2:
                 # Sort by TTL
-                provider_hops.sort(key=lambda x: x['ttl'])
+                provider_hops.sort(key=lambda x: x.get("ttl", 0))
                 
                 # Extract coordinates
                 lats = [h['lat'] for h in provider_hops]
@@ -237,7 +295,18 @@ def visualize():
         geo_map.update_layout(
             height=600,
             margin=dict(l=0, r=0, t=40, b=0),
-            legend_title_text='Cloud Provider'
+            legend_title_text='Cloud Provider',
+            geo=dict(
+                showland=True,
+                landcolor='rgb(243, 243, 243)',
+                countrycolor='rgb(204, 204, 204)',
+                showocean=True,
+                oceancolor='rgb(230, 230, 250)',
+                showlakes=True,
+                lakecolor='rgb(230, 230, 250)',
+                showrivers=True,
+                rivercolor='rgb(230, 230, 250)'
+            )
         )
     else:
         # Create empty map if no geo data
@@ -275,6 +344,7 @@ def visualize():
     charts = {
         'rtt_bar': rtt_bar.to_json(),
         'hop_latency': hop_latency.to_json(),
+        'hop_differential': hop_differential.to_json(),
         'geo_map': geo_map.to_json(),
         'gauges': [gauge.to_json() for gauge in gauges]
     }
