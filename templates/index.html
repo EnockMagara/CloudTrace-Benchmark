@@ -4,77 +4,169 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CloudTrace Benchmark</title>
+    <link rel="icon" href="{{ url_for('static', filename='img/cloud_trace_logo.svg') }}" type="image/svg+xml">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .navbar-brand {
+            font-weight: 700;
+        }
+        .card {
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        .card-header {
+            border-bottom: none;
+            padding: 1.25rem 1.5rem;
+        }
+        .card-header h2, .card-header h5 {
+            margin-bottom: 0;
+        }
+        .card-body {
+            padding: 1.5rem;
+        }
+        .btn-primary {
+            background-color: #4361ee;
+            border-color: #4361ee;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: #3a56d4;
+            border-color: #3a56d4;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .form-check-input:checked {
+            background-color: #4361ee;
+            border-color: #4361ee;
+        }
+        .progress {
+            height: 10px;
+            border-radius: 6px;
+        }
+        .provider-card {
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border-radius: 8px;
+            overflow: hidden;
+            height: 100%;
+            border: 1px solid #dee2e6;
+        }
+        .provider-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+        }
+        .provider-card.selected {
+            border-color: #4361ee;
+            box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.3);
+        }
+        .provider-card .card-body {
+            padding: 1rem;
+        }
+        @media (max-width: 767px) {
+            .card-header h2 {
+                font-size: 1.5rem;
+            }
+            .provider-container {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.5rem;
+            }
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="/">CloudTrace</a>
+            <a class="navbar-brand" href="/">
+                <img src="{{ url_for('static', filename='img/cloud_trace_logo.svg') }}" alt="CloudTrace Logo" class="navbar-logo me-2 d-none d-sm-inline">
+                <img src="{{ url_for('static', filename='img/cloud_trace_icon.svg') }}" alt="CloudTrace Icon" class="navbar-logo-small me-1 d-inline d-sm-none">
+                <span class="d-none d-sm-inline">CloudTrace</span>
+                <span class="d-inline d-sm-none">CT</span>
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
+                <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link active" href="/">Home</a>
+                        <a class="nav-link active" href="/"><i class="bi bi-house-door"></i> Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/visualize">Results</a>
+                        <a class="nav-link" href="/visualize"><i class="bi bi-graph-up"></i> Results</a>
                     </li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <div class="container mt-5">
-        <div class="row">
-            <div class="col-md-8 offset-md-2">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10 col-md-12">
                 <div class="card shadow">
                     <div class="card-header bg-primary text-white">
-                        <h2 class="mb-0">Cloud Provider Network Performance Benchmark</h2>
+                        <h2 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>Cloud Provider Network Performance Benchmark</h2>
                     </div>
                     <div class="card-body">
-                        <p class="lead">Analyze network latency and routing to major cloud providers</p>
+                        <p class="lead mb-4">Analyze network latency and routing to major cloud providers</p>
                         
-                        <div class="card-body">
-                            <h5 class="card-title">Benchmark Settings</h5>
-                            <form id="benchmarkForm">
-                                <div class="mb-3">
-                                    <label class="form-label">Select Cloud Providers to Benchmark</label>
-                                    <div class="row">
+                        <form id="benchmarkForm">
+                            <div class="mb-4">
+                                <h5 class="card-title mb-3"><i class="bi bi-gear me-2"></i>Benchmark Settings</h5>
+                                <div class="card p-3 mb-4 bg-light border-0">
+                                    <label class="form-label fw-bold mb-3">Select Cloud Providers to Benchmark</label>
+                                    <div class="row g-3 provider-container">
                                         {% for provider_id, provider_name in providers.items() %}
-                                        <div class="col-md-4 col-sm-6 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input provider-checkbox" type="checkbox" value="{{ provider_id }}" id="check_{{ provider_id }}" name="providers[]" {% if provider_id in ['aws', 'azure', 'gcp'] %}checked{% endif %}>
-                                                <label class="form-check-label" for="check_{{ provider_id }}">
-                                                    {{ provider_name }}
-                                                </label>
+                                        <div class="col-md-4 col-sm-6">
+                                            <div class="provider-card" id="provider_card_{{ provider_id }}">
+                                                <div class="card-body">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input provider-checkbox" type="checkbox" value="{{ provider_id }}" id="check_{{ provider_id }}" name="providers[]" {% if provider_id in ['aws', 'azure', 'gcp'] %}checked{% endif %}>
+                                                        <label class="form-check-label fw-bold" for="check_{{ provider_id }}">
+                                                            {{ provider_name }}
+                                                        </label>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                         {% endfor %}
                                     </div>
                                 </div>
 
-                                <div class="mb-3">
-                                    <label for="numRuns" class="form-label">Number of Runs per Provider</label>
-                                    <div class="input-group">
-                                        <input type="number" class="form-control" id="numRuns" name="numRuns" min="1" max="10" value="3">
-                                        <div class="input-group-text" data-bs-toggle="tooltip" data-bs-placement="top" title="Multiple runs are averaged to produce more consistent results. More runs = more accurate but takes longer.">
-                                            <i class="bi bi-info-circle"></i>
+                                <div class="card p-3 bg-light border-0">
+                                    <label for="numRuns" class="form-label fw-bold mb-3">Number of Runs per Provider</label>
+                                    <div class="row align-items-center">
+                                        <div class="col-md-6">
+                                            <div class="input-group">
+                                                <input type="number" class="form-control" id="numRuns" name="numRuns" min="1" max="10" value="3">
+                                                <button class="btn btn-outline-secondary" type="button" data-bs-toggle="tooltip" data-bs-placement="top" title="Multiple runs are averaged to produce more consistent results. More runs = more accurate but takes longer.">
+                                                    <i class="bi bi-info-circle"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-muted">Higher values give more consistent results but take longer to run.</small>
                                         </div>
                                     </div>
-                                    <small class="text-muted">Higher values give more consistent results but take longer to run.</small>
                                 </div>
+                            </div>
 
-                                <div class="d-grid gap-2">
-                                    <button type="submit" class="btn btn-primary" id="startBtn">Start Benchmark</button>
-                                </div>
-                            </form>
-                        </div>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg" id="startBtn">
+                                    <i class="bi bi-play-fill me-2"></i>Start Benchmark
+                                </button>
+                            </div>
+                        </form>
                         
                         <div class="alert alert-info mt-4 d-none" id="runningAlert">
                             <strong>Running benchmark...</strong> This may take a few moments.
@@ -86,45 +178,63 @@
                                      role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" 
                                      style="width: 0%"></div>
                             </div>
-                            <div class="d-flex justify-content-between mb-2">
-                                <span id="progressText">0% Complete</span>
+                            <div class="d-flex justify-content-between flex-wrap mb-2">
+                                <span id="progressText" class="badge bg-primary mb-2">0% Complete</span>
                                 <small class="text-muted" id="progressDetails"></small>
                             </div>
                         </div>
                         
                         <div class="alert alert-success mt-4 d-none" id="successAlert">
-                            <strong>Benchmark complete!</strong> <a href="/visualize">View results</a>
+                            <strong>Benchmark complete!</strong> <a href="/visualize" class="btn btn-sm btn-success ms-2">View results</a>
                         </div>
                         
                         <div class="card mt-4">
-                            <div class="card-header">
-                                <h5 class="mb-0">Optimization Tips</h5>
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Optimization Tips</h5>
                             </div>
                             <div class="card-body">
-                                <p class="text-muted small">For faster and more accurate results:</p>
-                                <ul class="small">
-                                    <li>Use a wired network connection rather than Wi-Fi for more consistent results</li>
-                                    <li>Close bandwidth-intensive applications during the benchmark</li>
-                                    <li>For more accurate geography data, consider adding your own IPInfo API token in the .env file</li>
-                                    <li>Running multiple providers in parallel might impact the accuracy of latency measurements</li>
+                                <ul class="mb-0">
+                                    <li class="mb-2"><i class="bi bi-wifi me-2"></i>Use a wired network connection rather than Wi-Fi for more consistent results</li>
+                                    <li class="mb-2"><i class="bi bi-x-circle me-2"></i>Close bandwidth-intensive applications during the benchmark</li>
+                                    <li class="mb-2"><i class="bi bi-geo-alt me-2"></i>For more accurate geography data, consider adding your own IPInfo API token in the .env file</li>
+                                    <li><i class="bi bi-exclamation-triangle me-2"></i>Running multiple providers in parallel might impact the accuracy of latency measurements</li>
                                 </ul>
                             </div>
                         </div>
                         
                         <div class="alert alert-warning mt-4">
-                            <h5>Important: Requires Administrator/Root Privileges</h5>
+                            <h5><i class="bi bi-shield-lock me-2"></i>Important: Requires Administrator/Root Privileges</h5>
                             <p>This application uses raw sockets for traceroute functionality, which requires elevated permissions:</p>
                             <ul>
-                                <li>On Windows: Run as Administrator</li>
-                                <li>On macOS/Linux: Run with sudo or as root</li>
+                                <li><i class="bi bi-windows me-2"></i>On Windows: Run as Administrator</li>
+                                <li><i class="bi bi-apple me-2"></i>On macOS/Linux: Run with sudo or as root</li>
                             </ul>
-                            <p>Without proper permissions, the benchmark will display limited information.</p>
+                            <p class="mb-0">Without proper permissions, the benchmark will display limited information.</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <footer class="bg-dark text-white py-4 mt-auto">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center">
+                        <img src="{{ url_for('static', filename='img/cloud_trace_logo.svg') }}" alt="CloudTrace Logo" class="footer-logo me-3">
+                        <div>
+                            <h5>CloudTrace</h5>
+                            <p class="small mb-0">Network performance benchmark for cloud providers</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="small mb-0">© 2025 CloudTrace Benchmark</p>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>

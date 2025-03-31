@@ -1,0 +1,32 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cloudGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4361ee" />
+      <stop offset="100%" stop-color="#3a56d4" />
+    </linearGradient>
+    <linearGradient id="traceGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e63946" />
+      <stop offset="100%" stop-color="#d62828" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Cloud Background -->
+  <rect x="4" y="10" width="56" height="44" rx="22" fill="url(#cloudGradient)" />
+  
+  <!-- Cloud Shape -->
+  <path d="M52,32 Q58,32 58,26 Q58,20 52,20 Q52,14 46,14 Q40,14 40,20 H32 Q28,14 22,14 Q14,14 14,22 Q8,22 8,32 Q8,42 16,42 H48 Q58,42 58,32 Q58,32 52,32 Z" 
+        fill="white" fill-opacity="0.9" />
+  
+  <!-- Trace Lines -->
+  <path d="M14,36 L50,36" stroke="url(#traceGradient)" stroke-width="3" stroke-linecap="round" stroke-dasharray="0.5, 4" />
+  <path d="M16,30 L48,30" stroke="url(#traceGradient)" stroke-width="3" stroke-linecap="round" stroke-dasharray="0.5, 6" />
+  <path d="M18,24 L46,24" stroke="url(#traceGradient)" stroke-width="3" stroke-linecap="round" stroke-dasharray="0.5, 8" />
+  
+  <!-- Radar Ping -->
+  <circle cx="48" cy="30" r="4" fill="#e63946">
+    <animate attributeName="opacity" values="1;0.2;1" dur="2s" repeatCount="indefinite" />
+  </circle>
+  
+  <!-- CT Initials -->
+  <text x="32" y="54" font-family="Arial, sans-serif" font-weight="bold" font-size="10" text-anchor="middle" fill="#3a56d4">CT</text>
+</svg> 

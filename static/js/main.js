@@ -8,6 +8,46 @@ $(document).ready(function() {
     const successAlert = $('#successAlert');
     const startBtn = $('#startBtn');
     
+    // Initialize tooltips
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+    
+    // Make provider cards clickable
+    $('.provider-card').on('click', function(e) {
+        // Don't toggle if clicking directly on the checkbox
+        if (!$(e.target).is('input.provider-checkbox')) {
+            const checkbox = $(this).find('input.provider-checkbox');
+            checkbox.prop('checked', !checkbox.prop('checked'));
+            updateProviderCardSelection();
+        }
+    });
+    
+    // Update card selection status when checkboxes change
+    $('.provider-checkbox').on('change', function() {
+        updateProviderCardSelection();
+    });
+    
+    // Initialize card selection state
+    updateProviderCardSelection();
+    
+    function updateProviderCardSelection() {
+        $('.provider-card').each(function() {
+            const checkbox = $(this).find('input.provider-checkbox');
+            if (checkbox.prop('checked')) {
+                $(this).addClass('selected');
+            } else {
+                $(this).removeClass('selected');
+            }
+        });
+        
+        // Update start button based on selection
+        if ($('.provider-checkbox:checked').length > 0) {
+            startBtn.prop('disabled', false);
+        } else {
+            startBtn.prop('disabled', true);
+        }
+    }
+    
     // Check if a benchmark is already running on page load
     checkStatus();
     
@@ -25,7 +65,7 @@ $(document).ready(function() {
         const numRuns = parseInt($('#numRuns').val()) || 3;
         
         if (selectedProviders.length === 0) {
-            alert('Please select at least one cloud provider');
+            showToast('Please select at least one cloud provider');
             return;
         }
         
@@ -39,9 +79,14 @@ $(document).ready(function() {
         progressDetails.text('Starting benchmark...');
         progressContainer.removeClass('d-none');
         runningAlert.removeClass('d-none alert-success alert-danger').addClass('alert-info')
-            .html(`<h5>Benchmark Running...</h5>
+            .html(`<h5><i class="bi bi-activity me-2"></i>Benchmark Running...</h5>
                   <p>Running benchmark for ${selectedProviders.length} provider(s) with ${numRuns} runs each.</p>`);
         successAlert.addClass('d-none');
+        
+        // Animate scroll to progress section
+        $('html, body').animate({
+            scrollTop: runningAlert.offset().top - 20
+        }, 500);
         
         // Start the benchmark
         $.ajax({
@@ -59,15 +104,42 @@ $(document).ready(function() {
             },
             error: function(error) {
                 console.error('Error starting benchmark:', error);
-                alert('Error starting benchmark: ' + (error.responseJSON ? error.responseJSON.message : 'Unknown error'));
+                showToast('Error starting benchmark: ' + (error.responseJSON ? error.responseJSON.message : 'Unknown error'));
                 startBtn.prop('disabled', false);
-                startBtn.html('Start Benchmark');
+                startBtn.html('<i class="bi bi-play-fill me-2"></i>Start Benchmark');
                 runningAlert.removeClass('alert-info').addClass('alert-danger')
-                    .html(`<h5>Benchmark Error</h5>
+                    .html(`<h5><i class="bi bi-exclamation-triangle me-2"></i>Benchmark Error</h5>
                            <p>${error.responseJSON ? error.responseJSON.message : 'Unknown error occurred'}</p>`);
             }
         });
     });
+    
+    function showToast(message) {
+        // Create a toast element if it doesn't exist
+        if ($('#toast-container').length === 0) {
+            $('body').append(`<div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 1050"></div>`);
+        }
+        
+        const toastId = 'toast-' + Date.now();
+        const toast = `
+            <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header">
+                    <i class="bi bi-info-circle me-2 text-primary"></i>
+                    <strong class="me-auto">CloudTrace</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        `;
+        
+        $('#toast-container').append(toast);
+        const toastElement = new bootstrap.Toast(document.getElementById(toastId), {
+            delay: 3000
+        });
+        toastElement.show();
+    }
     
     // Functions for status checking and polling
     function checkStatus() {
@@ -147,21 +219,26 @@ $(document).ready(function() {
         
         const percent = progress.progress || 0;
         
-        // Update progress bar
+        // Update progress bar with smooth animation
         progressBar.css('width', percent + '%').attr('aria-valuenow', percent);
         
         // Update text based on status
         let statusText = '';
+        let iconClass = 'bi-hourglass-split';
+        
         if (progress.status === 'complete') {
             statusText = 'Complete (100%)';
+            iconClass = 'bi-check-circle';
         } else if (percent < 5) {
             statusText = 'Initializing...';
+            iconClass = 'bi-arrow-clockwise';
         } else {
             statusText = `${progress.current_provider || 'Processing'} (${Math.round(percent)}%)`;
+            iconClass = 'bi-arrow-repeat';
         }
         
-        // Update progress text
-        progressText.text(statusText);
+        // Update progress text with icon
+        progressText.html(`<i class="bi ${iconClass} me-1"></i> ${statusText}`);
         
         // Update details
         let details = '';
@@ -183,7 +260,7 @@ $(document).ready(function() {
             const elapsed = Math.round((Date.now() / 1000) - progress.start_time);
             const minutes = Math.floor(elapsed / 60);
             const seconds = elapsed % 60;
-            details += ` • Time elapsed: ${minutes}m ${seconds}s`;
+            details += ` • Time elapsed: ${minutes}m ${seconds.toString().padStart(2, '0')}s`;
         }
         
         progressDetails.text(details);
@@ -197,21 +274,32 @@ $(document).ready(function() {
         }
         
         // Update UI
-        progressBar.css('width', '100%').attr('aria-valuenow', 100);
-        progressText.text('Complete (100%)');
+        progressBar.css('width', '100%').attr('aria-valuenow', 100)
+                   .removeClass('progress-bar-animated');
+        progressText.html('<i class="bi bi-check-circle-fill me-1"></i> Complete (100%)');
         
         // Show success message and results link
         runningAlert.removeClass('alert-info').addClass('alert-success')
-            .html(`<h5>Benchmark Complete!</h5>
+            .html(`<h5><i class="bi bi-check-circle me-2"></i>Benchmark Complete!</h5>
                    <p>The benchmark has completed successfully.</p>
-                   <a href="/visualize" class="btn btn-primary">View Results</a>`);
+                   <a href="/visualize" class="btn btn-success">
+                       <i class="bi bi-bar-chart me-2"></i>View Results
+                   </a>`);
         
         // Show success alert as well
         successAlert.removeClass('d-none');
         
         // Re-enable button
         startBtn.prop('disabled', false);
-        startBtn.html('Start Benchmark');
+        startBtn.html('<i class="bi bi-play-fill me-2"></i>Start Benchmark');
+        
+        // Show toast notification
+        showToast('Benchmark completed successfully!');
+        
+        // Animate scroll to results section
+        $('html, body').animate({
+            scrollTop: runningAlert.offset().top - 20
+        }, 500);
     }
     
     function showError(message) {
@@ -223,11 +311,17 @@ $(document).ready(function() {
         
         // Update UI
         runningAlert.removeClass('alert-info').addClass('alert-danger')
-            .html(`<h5>Benchmark Error</h5>
-                   <p>${message}</p>`);
+            .html(`<h5><i class="bi bi-exclamation-triangle me-2"></i>Benchmark Error</h5>
+                   <p>${message}</p>
+                   <button class="btn btn-outline-danger" onclick="location.reload()">
+                       <i class="bi bi-arrow-repeat me-2"></i>Try Again
+                   </button>`);
         
         // Re-enable button
         startBtn.prop('disabled', false);
-        startBtn.html('Start Benchmark');
+        startBtn.html('<i class="bi bi-play-fill me-2"></i>Start Benchmark');
+        
+        // Show toast notification
+        showToast('Benchmark error: ' + message);
     }
 });
