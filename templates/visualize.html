@@ -59,6 +59,17 @@
                         </div>
                         
                         <div class="row mb-4">
+                            <div class="col-md-12">
+                                <h3>Hop Latency Differential (Added Latency per Hop)</h3>
+                                <div id="hopDifferentialChart" style="height: 500px;"></div>
+                                <div class="text-muted mt-2 small">
+                                    <p>This chart shows the latency added by each hop in the network path. 
+                                    Higher values indicate potential bottlenecks or long-distance links.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-4">
                             <div class="col-12">
                                 <h3>Success Rate by Provider</h3>
                             </div>
@@ -98,7 +109,18 @@
                                                 <td>{{ "%.2f"|format(results[endpoint].max_rtt_ms) }}</td>
                                                 <td>{{ "%.2f"|format(results[endpoint].success_rate) }}%</td>
                                                 <td>{{ "%.2f"|format(results[endpoint].packet_loss) }}%</td>
-                                                <td>{{ results[endpoint].countries_traversed }}</td>
+                                                <td>
+                                                    {{ results[endpoint].countries_traversed }}
+                                                    {% if results[endpoint].countries_list %}
+                                                    <span class="ms-2" role="button" data-bs-toggle="tooltip" data-bs-placement="top" 
+                                                          title="{{ results[endpoint].countries_list|join(', ') }}">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+                                                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                                            <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                                                        </svg>
+                                                    </span>
+                                                    {% endif %}
+                                                </td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>
@@ -137,9 +159,11 @@
                                                         <th>Hop</th>
                                                         <th>IP Address</th>
                                                         <th>RTT (ms)</th>
+                                                        <th>Added Latency (ms)</th>
                                                         <th>Status</th>
                                                         <th>Location</th>
                                                         <th>Organization</th>
+                                                        <th>AS Number</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -148,6 +172,17 @@
                                                         <td>{{ hop.ttl }}</td>
                                                         <td>{{ hop.ip or 'N/A' }}</td>
                                                         <td>{{ "%.2f"|format(hop.rtt) if hop.rtt else 'N/A' }}</td>
+                                                        <td>
+                                                            {% if hop.hop_latency is defined %}
+                                                                {% if hop.hop_latency > 0 %}
+                                                                    <span class="text-danger">+{{ "%.2f"|format(hop.hop_latency) }}</span>
+                                                                {% else %}
+                                                                    <span class="text-success">{{ "%.2f"|format(hop.hop_latency) }}</span>
+                                                                {% endif %}
+                                                            {% else %}
+                                                                N/A
+                                                            {% endif %}
+                                                        </td>
                                                         <td>
                                                             {% if hop.status == 'success' %}
                                                             <span class="badge bg-success">Success</span>
@@ -177,6 +212,13 @@
                                                                 N/A
                                                             {% endif %}
                                                         </td>
+                                                        <td>
+                                                            {% if hop.geo and hop.geo.asn %}
+                                                                AS{{ hop.geo.asn }}
+                                                            {% else %}
+                                                                N/A
+                                                            {% endif %}
+                                                        </td>
                                                     </tr>
                                                     {% endfor %}
                                                 </tbody>
@@ -195,9 +237,18 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Initialize tooltips
+        document.addEventListener('DOMContentLoaded', function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
+            });
+        });
+        
         // Parse chart data from Flask 
         const rttBar = JSON.parse('{{ charts.rtt_bar | safe }}');
         const hopLatency = JSON.parse('{{ charts.hop_latency | safe }}');
+        const hopDifferential = JSON.parse('{{ charts.hop_differential | safe }}');
         const geoMap = JSON.parse('{{ charts.geo_map | safe }}');
         const gauges = [
             {% for gauge in charts.gauges %}
@@ -208,6 +259,7 @@
         // Render charts
         Plotly.newPlot('rttBarChart', rttBar.data, rttBar.layout);
         Plotly.newPlot('hopLatencyChart', hopLatency.data, hopLatency.layout);
+        Plotly.newPlot('hopDifferentialChart', hopDifferential.data, hopDifferential.layout);
         Plotly.newPlot('geoMap', geoMap.data, geoMap.layout);
         
         // Render gauge charts
@@ -222,6 +274,10 @@
                 'yaxis.automargin': true
             });
             Plotly.relayout('hopLatencyChart', {
+                'xaxis.automargin': true,
+                'yaxis.automargin': true
+            });
+            Plotly.relayout('hopDifferentialChart', {
                 'xaxis.automargin': true,
                 'yaxis.automargin': true
             });
