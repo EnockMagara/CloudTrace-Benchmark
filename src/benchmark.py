@@ -11,6 +11,17 @@ def run_benchmark(endpoints):
         # Add geolocation data to hops
         hops = geolocator.geolocate_hops(hops)
         
+        # Calculate latency between hops
+        sorted_hops = sorted([h for h in hops if h["status"] == "success"], key=lambda x: x["ttl"])
+        
+        for i in range(1, len(sorted_hops)):
+            prev_hop = sorted_hops[i-1]
+            current_hop = sorted_hops[i]
+            
+            if prev_hop["rtt"] is not None and current_hop["rtt"] is not None:
+                # Latency between this hop and previous hop
+                current_hop["hop_latency"] = current_hop["rtt"] - prev_hop["rtt"]
+        
         valid_hops = [h for h in hops if h["status"] == "success"]
         timeouts = len([h for h in hops if h["status"] == "timeout"])
         errors = len([h for h in hops if h["status"].startswith("error")])
