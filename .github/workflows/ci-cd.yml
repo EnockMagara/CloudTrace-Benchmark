@@ -101,11 +101,14 @@ jobs:
           # Create deploy directory structure
           ssh $DROPLET_USER@$DROPLET_IP "mkdir -p $DEPLOY_PATH/dist"
           
-          # Copy application files
-          scp -r app.py src/ templates/ static/ requirements.txt config/ $DROPLET_USER@$DROPLET_IP:$DEPLOY_PATH/
+          # Copy application files including deploy.sh
+          scp -r app.py src/ templates/ static/ requirements.txt config/ deploy.sh cloudtrace.service $DROPLET_USER@$DROPLET_IP:$DEPLOY_PATH/
           
           # Copy the package if needed
           scp -r dist/* $DROPLET_USER@$DROPLET_IP:$DEPLOY_PATH/dist/
+          
+          # Make deploy.sh executable
+          ssh $DROPLET_USER@$DROPLET_IP "chmod +x $DEPLOY_PATH/deploy.sh"
           
           # Run deployment script on server
           ssh $DROPLET_USER@$DROPLET_IP "cd $DEPLOY_PATH && bash deploy.sh"
