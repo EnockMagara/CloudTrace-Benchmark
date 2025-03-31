@@ -41,24 +41,15 @@
                         <form id="benchmark-form">
                             <div class="mb-3">
                                 <label class="form-label">Select Cloud Providers:</label>
+                                {% for provider_key, provider_name in providers.items() %}
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" value="aws" id="aws" checked>
-                                    <label class="form-check-label" for="aws">
-                                        Amazon Web Services (AWS)
+                                    <input class="form-check-input" type="checkbox" value="{{ provider_key }}" id="{{ provider_key }}" 
+                                           {% if provider_key in ['aws', 'azure', 'gcp'] %}checked{% endif %}>
+                                    <label class="form-check-label" for="{{ provider_key }}">
+                                        {{ provider_name }}
                                     </label>
                                 </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" value="azure" id="azure" checked>
-                                    <label class="form-check-label" for="azure">
-                                        Microsoft Azure
-                                    </label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" value="gcp" id="gcp" checked>
-                                    <label class="form-check-label" for="gcp">
-                                        Google Cloud Platform (GCP)
-                                    </label>
-                                </div>
+                                {% endfor %}
                             </div>
                             
                             <button type="submit" class="btn btn-primary" id="runButton">
