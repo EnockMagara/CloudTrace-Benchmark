@@ -97,28 +97,38 @@ jobs:
           DROPLET_IP: ${{ secrets.DROPLET_IP }}
           DROPLET_USER: ${{ secrets.DROPLET_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          EMAIL: ${{ secrets.EMAIL }}
         run: |
           # Create deploy directory structure
           ssh $DROPLET_USER@$DROPLET_IP "mkdir -p $DEPLOY_PATH/dist"
           
-          # Copy application files including deploy.sh
-          scp -r app.py src/ templates/ static/ requirements.txt config/ deploy.sh cloudtrace.service $DROPLET_USER@$DROPLET_IP:$DEPLOY_PATH/
+          # Copy application files including deploy script and HTTPS setup
+          scp -r app.py src/ templates/ static/ requirements.txt config/ deploy.sh setup_https.sh cloudtrace.service $DROPLET_USER@$DROPLET_IP:$DEPLOY_PATH/
           
           # Copy the package if needed
           scp -r dist/* $DROPLET_USER@$DROPLET_IP:$DEPLOY_PATH/dist/
           
-          # Make deploy.sh executable
-          ssh $DROPLET_USER@$DROPLET_IP "chmod +x $DEPLOY_PATH/deploy.sh"
+          # Make scripts executable
+          ssh $DROPLET_USER@$DROPLET_IP "chmod +x $DEPLOY_PATH/deploy.sh $DEPLOY_PATH/setup_https.sh"
           
           # Run deployment script on server
           ssh $DROPLET_USER@$DROPLET_IP "cd $DEPLOY_PATH && bash deploy.sh"
+          
+          # Set up HTTPS if domain is configured (only if allowed to run sudo)
+          ssh $DROPLET_USER@$DROPLET_IP "cd $DEPLOY_PATH && sed -i 's/EMAIL=.*/EMAIL=\"$EMAIL\"/' setup_https.sh"
+          ssh $DROPLET_USER@$DROPLET_IP "cd $DEPLOY_PATH && echo \"Setting up HTTPS requires sudo. If it doesn't work automatically, run 'sudo bash setup_https.sh' manually on the server.\""
+          ssh $DROPLET_USER@$DROPLET_IP "cd $DEPLOY_PATH && sudo -n bash setup_https.sh || echo 'Please run setup_https.sh manually with sudo permissions'"
           
       - name: Verify deployment
         env:
           DROPLET_IP: ${{ secrets.DROPLET_IP }}
           DROPLET_USER: ${{ secrets.DROPLET_USER }}
+          DOMAIN: "cloudtrace.duckdns.org"
         run: |
           # Wait for service to start
           sleep 10
           # Check if service is running
           ssh $DROPLET_USER@$DROPLET_IP "systemctl is-active cloudtrace.service || echo 'Service not running'"
+          echo "Deployment complete! Your application should be available at:"
+          echo "  http://$DROPLET_IP"
+          echo "  https://$DOMAIN (if HTTPS setup completed successfully)"

@@ -80,6 +80,7 @@ For production deployment, refer to these guides:
 
 - [Server Setup Guide](SERVER_SETUP.md) - How to set up your server
 - [Deployment Guide](DEPLOYMENT.md) - How to deploy the application
+- [HTTPS Setup Guide](HTTPS_SETUP.md) - How to secure your site with HTTPS
 - [CI/CD Pipeline](.github/workflows/deploy.yml) - GitHub Actions workflow
 
 ## Contributing
