@@ -36,3 +36,24 @@ body {
 .table-dark th {
     background-color: #343a40;
 }
+
+/* Progress tracking animation */
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+.fade-out {
+    animation: fadeOut 1s ease-in-out;
+}
+
+/* Progress bar colors */
+.progress-bar-animated {
+    background-color: #007bff;
+}
+
+/* Tooltip styling for countries list */
+.tooltip-inner {
+    max-width: 300px;
+    text-align: left;
+}
