@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CloudTrace - No Results</title>
+    <title>No Results Found - CloudTrace</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
@@ -32,11 +32,36 @@
             <div class="col-md-8 offset-md-2">
                 <div class="card shadow">
                     <div class="card-header bg-warning">
-                        <h2 class="mb-0">No Results Found</h2>
+                        <h2 class="mb-0">No Results Available</h2>
                     </div>
                     <div class="card-body">
-                        <p class="lead">You haven't run any benchmarks yet.</p>
-                        <a href="/" class="btn btn-primary">Run a Benchmark</a>
+                        {% if error %}
+                        <div class="alert alert-danger">
+                            <h4 class="alert-heading">Error</h4>
+                            <p>{{ error }}</p>
+                        </div>
+                        {% else %}
+                        <p class="lead">No benchmark results are available. Please run a benchmark first.</p>
+                        {% endif %}
+                        
+                        <div class="mt-4">
+                            <a href="/" class="btn btn-primary">Go to Benchmark</a>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <div class="card bg-light">
+                                <div class="card-header">Troubleshooting Tips</div>
+                                <div class="card-body">
+                                    <ul>
+                                        <li>Ensure you have selected at least one cloud provider before running the benchmark</li>
+                                        <li>Verify that your network connection is stable</li>
+                                        <li>Check that you have the required permissions for raw socket operations</li>
+                                        <li>Try refreshing the page if you just completed a benchmark</li>
+                                        <li>The benchmark needs to complete fully before results can be viewed</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

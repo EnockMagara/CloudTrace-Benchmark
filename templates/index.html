@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CloudTrace Benchmark</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
@@ -38,32 +40,85 @@
                     <div class="card-body">
                         <p class="lead">Analyze network latency and routing to major cloud providers</p>
                         
-                        <form id="benchmark-form">
-                            <div class="mb-3">
-                                <label class="form-label">Select Cloud Providers:</label>
-                                {% for provider_key, provider_name in providers.items() %}
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" value="{{ provider_key }}" id="{{ provider_key }}" 
-                                           {% if provider_key in ['aws', 'azure', 'gcp'] %}checked{% endif %}>
-                                    <label class="form-check-label" for="{{ provider_key }}">
-                                        {{ provider_name }}
-                                    </label>
+                        <div class="card-body">
+                            <h5 class="card-title">Benchmark Settings</h5>
+                            <form id="benchmarkForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Select Cloud Providers to Benchmark</label>
+                                    <div class="row">
+                                        {% for provider_id, provider_name in providers.items() %}
+                                        <div class="col-md-4 col-sm-6 mb-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input provider-checkbox" type="checkbox" value="{{ provider_id }}" id="check_{{ provider_id }}" name="providers[]" {% if provider_id in ['aws', 'azure', 'gcp'] %}checked{% endif %}>
+                                                <label class="form-check-label" for="check_{{ provider_id }}">
+                                                    {{ provider_name }}
+                                                </label>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
                                 </div>
-                                {% endfor %}
-                            </div>
-                            
-                            <button type="submit" class="btn btn-primary" id="runButton">
-                                <span class="spinner-border spinner-border-sm d-none" id="spinner" role="status"></span>
-                                Run Benchmark
-                            </button>
-                        </form>
+
+                                <div class="mb-3">
+                                    <label for="numRuns" class="form-label">Number of Runs per Provider</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="numRuns" name="numRuns" min="1" max="10" value="3">
+                                        <div class="input-group-text" data-bs-toggle="tooltip" data-bs-placement="top" title="Multiple runs are averaged to produce more consistent results. More runs = more accurate but takes longer.">
+                                            <i class="bi bi-info-circle"></i>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">Higher values give more consistent results but take longer to run.</small>
+                                </div>
+
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary" id="startBtn">Start Benchmark</button>
+                                </div>
+                            </form>
+                        </div>
                         
                         <div class="alert alert-info mt-4 d-none" id="runningAlert">
                             <strong>Running benchmark...</strong> This may take a few moments.
                         </div>
                         
+                        <div id="progressContainer" class="mt-4 d-none">
+                            <div class="progress mb-3">
+                                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" 
+                                     style="width: 0%"></div>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span id="progressText">0% Complete</span>
+                                <small class="text-muted" id="progressDetails"></small>
+                            </div>
+                        </div>
+                        
                         <div class="alert alert-success mt-4 d-none" id="successAlert">
                             <strong>Benchmark complete!</strong> <a href="/visualize">View results</a>
+                        </div>
+                        
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">Optimization Tips</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small">For faster and more accurate results:</p>
+                                <ul class="small">
+                                    <li>Use a wired network connection rather than Wi-Fi for more consistent results</li>
+                                    <li>Close bandwidth-intensive applications during the benchmark</li>
+                                    <li>For more accurate geography data, consider adding your own IPInfo API token in the .env file</li>
+                                    <li>Running multiple providers in parallel might impact the accuracy of latency measurements</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning mt-4">
+                            <h5>Important: Requires Administrator/Root Privileges</h5>
+                            <p>This application uses raw sockets for traceroute functionality, which requires elevated permissions:</p>
+                            <ul>
+                                <li>On Windows: Run as Administrator</li>
+                                <li>On macOS/Linux: Run with sudo or as root</li>
+                            </ul>
+                            <p>Without proper permissions, the benchmark will display limited information.</p>
                         </div>
                     </div>
                 </div>
