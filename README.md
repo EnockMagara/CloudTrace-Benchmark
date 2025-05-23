@@ -74,20 +74,12 @@ CloudTrace uses traceroute functionality that requires raw socket access. You mu
 - `templates/` - HTML templates
 - `data/` - Data storage for benchmark results
 
-## Deployment
 
-For production deployment, refer to these guides:
-
-- [Deployment Guide](DEPLOYMENT.md) - How to deploy the application
-- [CI/CD Pipeline](.github/workflows/deploy.yml) - GitHub Actions workflow
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Acknowledgements
 
