@@ -78,7 +78,6 @@ CloudTrace uses traceroute functionality that requires raw socket access. You mu
 
 For production deployment, refer to these guides:
 
-- [Server Setup Guide](SERVER_SETUP.md) - How to set up your server
 - [Deployment Guide](DEPLOYMENT.md) - How to deploy the application
 - [CI/CD Pipeline](.github/workflows/deploy.yml) - GitHub Actions workflow
 
