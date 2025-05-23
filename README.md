@@ -1,6 +1,6 @@
 # CloudTrace
 
-![CloudTrace Logo](static/img/logo.svg)
+
 
 CloudTrace is a cloud provider benchmark tool that measures and visualizes network performance to major cloud providers. It helps you make informed decisions about which cloud provider might offer the best network performance for your specific location and needs.
 
